@@ -39,22 +39,26 @@ img{
 
 <body>
 
-<img id="img" src="">
-<div id="hint">Tryck på skärmen för nästa bild</div>
+<img id="img">
+<div id="hint">Tryck för nästa bild</div>
 
 <script>
 
 const TOTAL_BILDER = 50;
 
-// skapar lista: 1.jpg ... 50.jpg
-let bilder = Array.from({length: TOTAL_BILDER}, (_, i) => `bilder/${i+1}.jpg`);
+// alla bilder är PNG
+let bilder = Array.from(
+    {length: TOTAL_BILDER},
+    (_, i) => `bilder/${i+1}.png`
+);
+
+const startBild = "bilder/start.png";
 
 let deck = [];
-let current = -1;
 
 const img = document.getElementById("img");
 
-// blanda (Fisher-Yates shuffle)
+// Fisher-Yates shuffle
 function shuffle(array){
     for(let i = array.length - 1; i > 0; i--){
         const j = Math.floor(Math.random() * (i + 1));
@@ -63,21 +67,13 @@ function shuffle(array){
     return array;
 }
 
-// fyll "kortlek"
+// fyll kortlek
 function refillDeck(){
     deck = shuffle([...Array(bilder.length).keys()]);
 }
 
-// visa nästa bild
-function nextImage(){
-
-    if(deck.length === 0){
-        refillDeck(); // alla bilder visade → börja om
-    }
-
-    const index = deck.pop();
-    const src = bilder[index];
-
+// visa bild
+function show(src){
     img.style.opacity = 0;
 
     setTimeout(() => {
@@ -85,7 +81,18 @@ function nextImage(){
     }, 150);
 }
 
-// när bilden laddat → fade in
+// nästa slumpbild
+function nextImage(){
+
+    if(deck.length === 0){
+        refillDeck();
+    }
+
+    const index = deck.pop();
+    show(bilder[index]);
+}
+
+// när bild laddar → fade in
 img.onload = () => {
     img.style.opacity = 1;
 };
@@ -93,9 +100,12 @@ img.onload = () => {
 // klick = nästa bild
 document.body.addEventListener("click", nextImage);
 
-// starta direkt
-refillDeck();
-nextImage();
+// START: alltid start.png först
+img.src = startBild;
+img.onload = () => {
+    img.style.opacity = 1;
+    refillDeck();
+};
 
 </script>
 
