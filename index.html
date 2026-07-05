@@ -8,26 +8,12 @@
 <style>
 body{
     margin:0;
-    background:#0f0f0f;
+    background:#0e0e0e;
     height:100vh;
+    overflow:hidden;
     display:flex;
     justify-content:center;
     align-items:center;
-    overflow:hidden;
-    font-family:Arial;
-    color:white;
-    user-select:none;
-}
-
-#start{
-    text-align:center;
-}
-
-button{
-    padding:12px 18px;
-    font-size:16px;
-    border-radius:10px;
-    border:none;
     cursor:pointer;
 }
 
@@ -36,122 +22,81 @@ img{
     max-height:100vh;
     object-fit:contain;
     opacity:0;
-    transition:opacity .3s ease;
+    transition:opacity 0.35s ease;
 }
 
 #hint{
     position:fixed;
     bottom:10px;
+    color:white;
     font-size:12px;
-    opacity:0.6;
+    opacity:0.5;
+    font-family:Arial;
+    pointer-events:none;
 }
 </style>
 </head>
 
 <body>
 
-<div id="start">
-    <h2>📸 Slumpgalleri</h2>
-    <button id="add">Lägg till bilder</button>
-    <p>Tryck sedan på skärmen för slumpbild</p>
-</div>
-
-<input type="file" id="file" accept="image/*" multiple style="display:none">
-
-<img id="img">
-
-<div id="hint">Klicka var som helst = ny bild</div>
+<img id="img" src="">
+<div id="hint">Tryck på skärmen för nästa bild</div>
 
 <script>
-// ---------- IndexedDB ----------
-let db;
-const request = indexedDB.open("galleryDB", 1);
 
-request.onupgradeneeded = e => {
-    db = e.target.result;
-    db.createObjectStore("images", { keyPath: "id", autoIncrement:true });
-};
+const TOTAL_BILDER = 50;
 
-request.onsuccess = e => {
-    db = e.target.result;
-    loadImages();
-};
+// skapar lista: 1.jpg ... 50.jpg
+let bilder = Array.from({length: TOTAL_BILDER}, (_, i) => `bilder/${i+1}.jpg`);
 
-// ---------- Save ----------
-function saveImage(dataURL){
-    const tx = db.transaction("images","readwrite");
-    tx.objectStore("images").add({data:dataURL});
-}
+let deck = [];
+let current = -1;
 
-// ---------- Load ----------
-function loadImages(){
-    const tx = db.transaction("images","readonly");
-    const store = tx.objectStore("images");
-
-    const req = store.getAll();
-
-    req.onsuccess = () => {
-        images = req.result.map(i => i.data);
-    };
-}
-
-// ---------- UI ----------
-const fileInput = document.getElementById("file");
-const start = document.getElementById("start");
 const img = document.getElementById("img");
 
-let images = [];
-let bag = [];
-
-document.getElementById("add").onclick = () => {
-    fileInput.click();
-};
-
-fileInput.onchange = async (e) => {
-    const files = [...e.target.files];
-
-    for(const f of files){
-        const reader = new FileReader();
-        reader.onload = () => {
-            saveImage(reader.result);
-            images.push(reader.result);
-        };
-        reader.readAsDataURL(f);
+// blanda (Fisher-Yates shuffle)
+function shuffle(array){
+    for(let i = array.length - 1; i > 0; i--){
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
     }
-
-    start.style.display = "none";
-    img.style.display = "block";
-};
-
-// ---------- Shuffle bag (ingen upprepning förrän alla visats) ----------
-function refillBag(){
-    bag = [...Array(images.length).keys()];
+    return array;
 }
 
+// fyll "kortlek"
+function refillDeck(){
+    deck = shuffle([...Array(bilder.length).keys()]);
+}
+
+// visa nästa bild
 function nextImage(){
-    if(images.length === 0) return;
 
-    if(bag.length === 0) refillBag();
+    if(deck.length === 0){
+        refillDeck(); // alla bilder visade → börja om
+    }
 
-    const i = Math.floor(Math.random() * bag.length);
-    const idx = bag.splice(i,1)[0];
+    const index = deck.pop();
+    const src = bilder[index];
 
     img.style.opacity = 0;
 
     setTimeout(() => {
-        img.src = images[idx];
-        img.onload = () => img.style.opacity = 1;
+        img.src = src;
     }, 150);
 }
 
-// ---------- Click ----------
-document.body.addEventListener("click", () => {
-    if(images.length > 0){
-        start.style.display = "none";
-        img.style.display = "block";
-        nextImage();
-    }
-});
+// när bilden laddat → fade in
+img.onload = () => {
+    img.style.opacity = 1;
+};
+
+// klick = nästa bild
+document.body.addEventListener("click", nextImage);
+
+// starta direkt
+refillDeck();
+nextImage();
+
 </script>
 
 </body>
